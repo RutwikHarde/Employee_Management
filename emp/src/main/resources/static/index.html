@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet"> <!-- Link to your custom CSS file -->
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Employee Management</h1>
+
+    <button class="btn btn-primary" onclick="showForm()">Add Employee</button>
+
+    <div class="form-container" id="employeeForm">
+        <h3>Add/Edit Employee</h3>
+        <form id="employeeFormElement">
+            <input type="hidden" id="employeeId" />
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" class="form-control" id="name" required>
+            </div>
+            <div class="form-group">
+                <label for="position">Position</label>
+                <input type="text" class="form-control" id="position" required>
+            </div>
+            <div class="form-group">
+                <label for="salary">Salary</label>
+                <input type="number" class="form-control" id="salary" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Save</button>
+            <button type="button" class="btn btn-secondary" onclick="hideForm()">Cancel</button>
+        </form>
+    </div>
+
+    <div class="mt-4">
+        <table class="table table-striped" id="employeeTable">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Salary</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="employeeTableBody">
+            <!-- Employee rows will be inserted here by JavaScript -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Alert messages -->
+    <div id="alertContainer"></div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    $(document).ready(function() {
+        fetchEmployees();
+
+        $('#employeeFormElement').on('submit', function(event) {
+            event.preventDefault();
+            const id = $('#employeeId').val();
+            const name = $('#name').val();
+            const position = $('#position').val();
+            const salary = $('#salary').val();
+            const data = JSON.stringify({ name, position, salary });
+
+            if (id) {
+                // Update Employee
+                $.ajax({
+                    url: `/emp/${id}`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: data,
+                    success: function() {
+                        fetchEmployees();
+                        hideForm();
+                        showAlert('Employee updated successfully!', 'success');
+                    },
+                    error: function(xhr, status, error) {
+                        showAlert('Error updating employee: ' + error, 'danger');
+                    }
+                });
+            } else {
+                // Create Employee
+                $.ajax({
+                    url: '/emp',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: data,
+                    success: function() {
+                        fetchEmployees();
+                        hideForm();
+                        showAlert('Employee added successfully!', 'success');
+                    },
+                    error: function(xhr, status, error) {
+                        showAlert('Error creating employee: ' + error, 'danger');
+                    }
+                });
+            }
+        });
+    });
+
+    function fetchEmployees() {
+        $.get('/emp', function(employees) {
+            $('#employeeTableBody').empty();
+            employees.forEach(employee => {
+                $('#employeeTableBody').append(`
+                    <tr>
+                        <td>${employee.name}</td>
+                        <td>${employee.position}</td>
+                        <td>${employee.salary}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" onclick="editEmployee(${employee.id})"><i class="fas fa-edit"></i> Edit</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteEmployee(${employee.id})"><i class="fas fa-trash"></i> Delete</button>
+                        </td>
+                    </tr>
+                `);
+            });
+        });
+    }
+
+    function editEmployee(id) {
+        $.get(`/emp/${id}`, function(employee) {
+            $('#employeeId').val(employee.id);
+            $('#name').val(employee.name);
+            $('#position').val(employee.position);
+            $('#salary').val(employee.salary);
+            showForm();
+        });
+    }
+
+    function deleteEmployee(id) {
+        $.ajax({
+            url: `/emp/${id}`,
+            type: 'DELETE',
+            success: function() {
+                fetchEmployees();
+                showAlert('Employee deleted successfully!', 'success');
+            },
+            error: function(xhr, status, error) {
+                showAlert('Error deleting employee: ' + error, 'danger');
+            }
+        });
+    }
+
+    function showForm() {
+        $('#employeeForm').fadeIn();
+    }
+
+    function hideForm() {
+        $('#employeeForm').fadeOut();
+        $('#employeeFormElement')[0].reset();
+        $('#employeeId').val('');
+    }
+
+    function showAlert(message, type) {
+        const alertHtml = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        `;
+        $('#alertContainer').html(alertHtml);
+        setTimeout(() => {
+            $('.alert').alert('close');
+        }, 5000); // Auto-dismiss alert after 5 seconds
+    }
+</script>
+</body>
+</html>
